@@ -5,15 +5,17 @@ import {
   LegalList,
   LegalSection,
 } from "@/components/legal/legal-document";
+import { pageMetadata } from "@/lib/site";
 
 const CONTACT_EMAIL = "zeqdev.1@gmail.com";
 const LAST_UPDATED = "November 17, 2026";
 
-export const metadata: Metadata = {
-  title: "Terms of Use — BlockTask",
+export const metadata: Metadata = pageMetadata({
+  title: "Terms of Use",
   description:
     "The acceptable-use rules for BlockTask accounts, shared class workspaces, and content.",
-};
+  path: "/terms-of-use",
+});
 
 export default function TermsOfUsePage() {
   return (

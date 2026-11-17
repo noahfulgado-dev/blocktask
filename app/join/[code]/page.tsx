@@ -3,8 +3,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertCircle, ListTodo } from "lucide-react";
 
+import { LogoMark } from "@/components/brand/logo";
 import { JoinClassButton } from "@/components/class/join-class-button";
 import { AppHeader } from "@/components/layout/app-header";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,22 +15,43 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { requireUser } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
+import {
+  lookupInvite,
+  normalizeInviteCode,
+} from "@/lib/class-invite";
+import { pageMetadata } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { Profile } from "@/lib/types";
 
 export const instant = false;
 
-export const metadata: Metadata = {
-  title: "Join a class — BlockTask",
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}): Promise<Metadata> {
+  const { code: rawCode } = await params;
+  const code = normalizeInviteCode(rawCode);
+  const { preview } = await lookupInvite(code);
+  const className = preview?.name?.trim();
+  const title = className ? `Join ${className}` : "Join a class";
+  const description =
+    preview?.description?.trim() ||
+    (className
+      ? `You're invited to join ${className} on BlockTask. Invite code ${code}.`
+      : `You're invited to join a class workspace on BlockTask. Invite code ${code || "from your class admin"}.`);
 
-type Preview = {
-  id: string;
-  name: string;
-  description: string | null;
-};
+  return pageMetadata({
+    title,
+    description,
+    path: `/join/${code}`,
+    noIndex: true,
+    imagePath: `/join/${encodeURIComponent(code)}/opengraph-image`,
+    twitterImagePath: `/join/${encodeURIComponent(code)}/twitter-image`,
+  });
+}
 
 export default async function JoinPage({
   params,
@@ -36,56 +59,68 @@ export default async function JoinPage({
   params: Promise<{ code: string }>;
 }) {
   const { code: rawCode } = await params;
-  const code = decodeURIComponent(rawCode ?? "").trim().toUpperCase();
-
-  const user = await requireUser();
-  const supabase = await createClient();
-
-  const { data: profileRow } = await supabase
-    .from("profiles")
-    .select("email, full_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const currentProfile: Pick<Profile, "email" | "full_name"> = profileRow ?? {
-    email: user.email ?? "",
-    full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
-  };
-
+  const code = normalizeInviteCode(rawCode);
+  const user = await getSessionUser();
+  const { preview, failed: lookupFailed } = await lookupInvite(code);
   const configured = isSupabaseConfigured();
 
-  let preview: Preview | null = null;
-  let lookupFailed = false;
+  let currentProfile: Pick<Profile, "email" | "full_name"> | null = null;
 
-  if (configured && code) {
-    const { data, error } = await supabase.rpc("preview_class_by_code", {
-      p_code: code,
-    });
+  if (user) {
+    const supabase = await createClient();
 
-    if (error) {
-      lookupFailed = true;
-    } else {
-      const rows = (data ?? []) as Preview[];
-      preview = rows[0] ?? null;
-    }
-  }
-
-  if (preview) {
-    const { data: membership } = await supabase
-      .from("class_members")
-      .select("user_id")
-      .eq("class_id", preview.id)
-      .eq("user_id", user.id)
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("email, full_name")
+      .eq("id", user.id)
       .maybeSingle();
 
-    if (membership) {
-      redirect(`/class/${preview.id}`);
+    currentProfile = profileRow ?? {
+      email: user.email ?? "",
+      full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
+    };
+
+    if (preview) {
+      const { data: membership } = await supabase
+        .from("class_members")
+        .select("user_id")
+        .eq("class_id", preview.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (membership) {
+        redirect(`/class/${preview.id}`);
+      }
     }
   }
+
+  const joinPath = `/join/${code}`;
+  const loginHref = `/login?next=${encodeURIComponent(joinPath)}`;
+  const signupHref = `/signup?next=${encodeURIComponent(joinPath)}`;
 
   return (
     <div className="min-h-dvh">
-      <AppHeader profile={currentProfile} />
+      {currentProfile ? (
+        <AppHeader profile={currentProfile} />
+      ) : (
+        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+          <div className="mx-auto flex h-16 w-full max-w-lg items-center justify-between gap-4 px-4">
+            <Link href="/" className="flex items-center gap-2 font-semibold">
+              <LogoMark className="h-7 w-7" />
+              BlockTask
+            </Link>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Button asChild variant="ghost" size="sm">
+                <Link href={loginHref}>Log in</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href={signupHref}>Sign up</Link>
+              </Button>
+            </div>
+          </div>
+        </header>
+      )}
 
       <main className="mx-auto flex w-full max-w-lg flex-col justify-center px-4 py-16">
         {!configured ? (
@@ -102,7 +137,9 @@ export default async function JoinPage({
             </CardHeader>
             <CardContent>
               <Button asChild variant="outline" className="w-full">
-                <Link href="/dashboard">Back to dashboard</Link>
+                <Link href={user ? "/dashboard" : "/"}>
+                  {user ? "Back to dashboard" : "Back to home"}
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -121,7 +158,9 @@ export default async function JoinPage({
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
               <Button asChild className="w-full">
-                <Link href="/dashboard">Back to dashboard</Link>
+                <Link href={user ? "/dashboard" : "/"}>
+                  {user ? "Back to dashboard" : "Back to home"}
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -136,7 +175,9 @@ export default async function JoinPage({
               </CardTitle>
               <CardDescription>
                 {preview.description?.trim() ||
-                  "You were invited to this class workspace."}
+                  (user
+                    ? "You were invited to this class workspace."
+                    : "You were invited to this class workspace. Log in or create an account with your CvSU email to join.")}
               </CardDescription>
             </CardHeader>
 
@@ -148,10 +189,23 @@ export default async function JoinPage({
                 </span>
               </div>
 
-              <JoinClassButton code={code} />
+              {user ? (
+                <JoinClassButton code={code} />
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Button asChild size="lg" className="w-full">
+                    <Link href={loginHref}>Log in to join</Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline" className="w-full">
+                    <Link href={signupHref}>Create an account</Link>
+                  </Button>
+                </div>
+              )}
 
               <Button asChild variant="ghost" className="w-full">
-                <Link href="/dashboard">Not now</Link>
+                <Link href={user ? "/dashboard" : "/"}>
+                  {user ? "Not now" : "Back to home"}
+                </Link>
               </Button>
             </CardContent>
           </Card>

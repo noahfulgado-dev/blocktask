@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireClassAdmin } from "@/lib/auth";
+import { pageMetadata } from "@/lib/site";
 import type {
   ClassRow,
   MemberWithProfile,
@@ -27,9 +28,12 @@ import type {
 
 export const instant = false;
 
-export const metadata: Metadata = {
-  title: "Class settings — BlockTask",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Class settings",
+  description:
+    "Manage your BlockTask class details, invite code, members, and permissions.",
+  noIndex: true,
+});
 
 export default async function ClassSettingsPage({
   params,

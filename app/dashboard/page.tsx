@@ -11,15 +11,20 @@ import {
 } from "@/components/dashboard/reminders-panel";
 import { AppHeader } from "@/components/layout/app-header";
 import { requireUser } from "@/lib/auth";
+import { pageMetadata } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { ClassRow, MemberRole, TaskStatus } from "@/lib/types";
 
 export const instant = false;
 
-export const metadata: Metadata = {
-  title: "Your classes — BlockTask",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Your classes",
+  description:
+    "See your BlockTask classes, open a task board, and join another block with an invite code.",
+  path: "/dashboard",
+  noIndex: true,
+});
 
 export default async function DashboardPage() {
   const user = await requireUser();

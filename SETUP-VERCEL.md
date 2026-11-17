@@ -3,6 +3,9 @@
 BlockTask is a standard Next.js app and runs on Vercel with no special server
 setup. The database, auth, and realtime all live in Supabase.
 
+Before deploying, follow `SETUP-SUPABASE.md` and apply every migration, including
+`0007_public_invite_preview.sql`. Invite link previews need that migration.
+
 ## 1. Push the project to GitHub
 
 Create a repository and push this folder. `.env.local` is ignored, so your keys
@@ -32,6 +35,10 @@ Add these for **Production**, **Preview**, and **Development**:
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://<project-ref>.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your Supabase anon/public key |
+| `NEXT_PUBLIC_SITE_URL` | optional, e.g. `https://your-domain.com` |
+
+`NEXT_PUBLIC_SITE_URL` sets the canonical URL used in page metadata and Open
+Graph/Twitter cards. If omitted, Vercel's production URL is used automatically.
 
 Do **not** add a service role key. The app never uses one.
 

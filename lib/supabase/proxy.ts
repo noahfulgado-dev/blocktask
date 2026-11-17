@@ -7,7 +7,7 @@ import {
   SUPABASE_URL,
 } from "@/lib/supabase/config";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/class", "/join"];
+const PROTECTED_PREFIXES = ["/dashboard", "/class"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });

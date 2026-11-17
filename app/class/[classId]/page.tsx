@@ -11,6 +11,7 @@ import { TaskBoard } from "@/components/tasks/task-board";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireClassMember } from "@/lib/auth";
+import { pageMetadata } from "@/lib/site";
 import type {
   ClassRow,
   MemberWithProfile,
@@ -21,9 +22,12 @@ import type {
 
 export const instant = false;
 
-export const metadata: Metadata = {
-  title: "Task board — BlockTask",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Task board",
+  description:
+    "Track your block's tasks, assignments, completions, and deadlines in BlockTask.",
+  noIndex: true,
+});
 
 export default async function ClassPage({
   params,

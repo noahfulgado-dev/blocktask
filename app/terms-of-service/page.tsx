@@ -6,15 +6,17 @@ import {
   LegalList,
   LegalSection,
 } from "@/components/legal/legal-document";
+import { pageMetadata } from "@/lib/site";
 
 const CONTACT_EMAIL = "zeqdev.1@gmail.com";
 const LAST_UPDATED = "November 17, 2026";
 
-export const metadata: Metadata = {
-  title: "Terms of Service — BlockTask",
+export const metadata: Metadata = pageMetadata({
+  title: "Terms of Service",
   description:
     "The agreement that governs your access to and use of BlockTask.",
-};
+  path: "/terms-of-service",
+});
 
 export default function TermsOfServicePage() {
   return (

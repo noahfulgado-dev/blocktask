@@ -60,6 +60,9 @@ the next one.
 6. `supabase/migrations/0006_class_reminder.sql`
    - Adds the shared `classes.reminder` text and Realtime for `classes`, so
      admin reminders appear live for every member.
+7. `supabase/migrations/0007_public_invite_preview.sql`
+   - Lets signed-out visitors preview a class from its invite code so shared
+     invite links can show the class name and Open Graph image before login.
 
 ### Optional: use the Supabase CLI instead
 
