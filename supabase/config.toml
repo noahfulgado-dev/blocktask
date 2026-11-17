@@ -1,0 +1,18 @@
+# Local Supabase CLI config for BlockTask.
+#
+# The hosted project does not read this file automatically: configure the
+# same hook in Dashboard > Authentication > Hooks (see SETUP-SUPABASE.md).
+
+project_id = "blocktask"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = [
+  "http://localhost:3000/auth/callback",
+]
+
+# Reject any signup whose email domain is not cvsu.edu.ph.
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/hook_restrict_signup_by_email_domain"
