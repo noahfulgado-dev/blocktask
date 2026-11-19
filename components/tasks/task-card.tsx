@@ -256,7 +256,7 @@ export function TaskCard({
               }
               disabled={!canChangeStatus}
               className={cn(
-                "appearance-none rounded-full border py-1 pl-2.5 pr-6 text-xs font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70",
+                "appearance-none rounded-full border py-1 pl-2.5 pr-6 text-base font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70 sm:text-xs",
                 STATUS_STYLES[task.status],
               )}
             >

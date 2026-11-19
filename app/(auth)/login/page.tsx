@@ -1,10 +1,9 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 
 import { LoginForm } from "@/components/auth/login-form";
 import { pageMetadata } from "@/lib/site";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-
-export const instant = false;
 
 export const metadata: Metadata = pageMetadata({
   title: "Log in",
@@ -14,10 +13,28 @@ export const metadata: Metadata = pageMetadata({
   noIndex: true,
 });
 
-export default async function LoginPage({
+type LoginSearchParams = Promise<{ next?: string; error?: string }>;
+
+export default function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: LoginSearchParams;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <LoginForm next="/dashboard" configured={isSupabaseConfigured()} />
+      }
+    >
+      <LoginContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function LoginContent({
+  searchParams,
+}: {
+  searchParams: LoginSearchParams;
 }) {
   const params = await searchParams;
   const next =

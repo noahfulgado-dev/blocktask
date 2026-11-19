@@ -17,11 +17,11 @@ export async function setMemberRoleAction(input: {
   role: MemberRole;
 }): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: auth } = await supabase.auth.getClaims();
 
-  if (!user) return { ok: false, error: "You need to be logged in." };
+  if (!auth?.claims) {
+    return { ok: false, error: "You need to be logged in." };
+  }
 
   const { error } = await supabase.rpc("set_member_role", {
     p_class_id: input.classId,
@@ -47,11 +47,11 @@ export async function removeMemberAction(input: {
   userId: string;
 }): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: auth } = await supabase.auth.getClaims();
 
-  if (!user) return { ok: false, error: "You need to be logged in." };
+  if (!auth?.claims) {
+    return { ok: false, error: "You need to be logged in." };
+  }
 
   const { error } = await supabase.rpc("remove_member", {
     p_class_id: input.classId,
@@ -75,15 +75,15 @@ export async function leaveClassAction(
   classId: string,
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: auth } = await supabase.auth.getClaims();
 
-  if (!user) return { ok: false, error: "You need to be logged in." };
+  if (!auth?.claims) {
+    return { ok: false, error: "You need to be logged in." };
+  }
 
   const { error } = await supabase.rpc("remove_member", {
     p_class_id: classId,
-    p_user_id: user.id,
+    p_user_id: auth.claims.sub,
   });
 
   if (error) {

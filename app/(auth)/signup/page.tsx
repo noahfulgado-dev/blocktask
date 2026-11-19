@@ -1,10 +1,9 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 
 import { SignupForm } from "@/components/auth/signup-form";
 import { pageMetadata } from "@/lib/site";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-
-export const instant = false;
 
 export const metadata: Metadata = pageMetadata({
   title: "Sign up",
@@ -14,10 +13,28 @@ export const metadata: Metadata = pageMetadata({
   noIndex: true,
 });
 
-export default async function SignupPage({
+type SignupSearchParams = Promise<{ next?: string }>;
+
+export default function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: SignupSearchParams;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <SignupForm next="/dashboard" configured={isSupabaseConfigured()} />
+      }
+    >
+      <SignupContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function SignupContent({
+  searchParams,
+}: {
+  searchParams: SignupSearchParams;
 }) {
   const params = await searchParams;
   const next =

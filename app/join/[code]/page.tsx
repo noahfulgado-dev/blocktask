@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -15,17 +16,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getSessionUser } from "@/lib/auth";
+import { getAuthContext } from "@/lib/auth";
 import {
   lookupInvite,
   normalizeInviteCode,
 } from "@/lib/class-invite";
 import { pageMetadata } from "@/lib/site";
-import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { Profile } from "@/lib/types";
-
-export const instant = false;
 
 export async function generateMetadata({
   params,
@@ -53,44 +51,72 @@ export async function generateMetadata({
   });
 }
 
-export default async function JoinPage({
+export default function JoinPage({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}) {
+  return (
+    <Suspense fallback={<JoinPageSkeleton />}>
+      <JoinContent params={params} />
+    </Suspense>
+  );
+}
+
+function JoinPageSkeleton() {
+  return (
+    <div className="min-h-dvh">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex h-16 w-full max-w-lg items-center justify-between gap-4 px-4">
+          <div className="h-7 w-28 animate-pulse rounded-md bg-muted" />
+          <div className="h-8 w-40 animate-pulse rounded-lg bg-muted" />
+        </div>
+      </header>
+
+      <main className="mx-auto flex w-full max-w-lg flex-col justify-center px-4 py-16">
+        <div className="h-64 animate-pulse rounded-xl border border-border bg-card" />
+      </main>
+    </div>
+  );
+}
+
+async function JoinContent({
   params,
 }: {
   params: Promise<{ code: string }>;
 }) {
   const { code: rawCode } = await params;
   const code = normalizeInviteCode(rawCode);
-  const user = await getSessionUser();
-  const { preview, failed: lookupFailed } = await lookupInvite(code);
+  const [{ user, supabase }, { preview, failed: lookupFailed }] =
+    await Promise.all([getAuthContext(), lookupInvite(code)]);
   const configured = isSupabaseConfigured();
 
   let currentProfile: Pick<Profile, "email" | "full_name"> | null = null;
 
   if (user) {
-    const supabase = await createClient();
-
-    const { data: profileRow } = await supabase
-      .from("profiles")
-      .select("email, full_name")
-      .eq("id", user.id)
-      .maybeSingle();
+    const [{ data: profileRow }, { data: membership }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("email, full_name")
+        .eq("id", user.id)
+        .maybeSingle(),
+      preview
+        ? supabase
+            .from("class_members")
+            .select("user_id")
+            .eq("class_id", preview.id)
+            .eq("user_id", user.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
 
     currentProfile = profileRow ?? {
       email: user.email ?? "",
       full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
     };
 
-    if (preview) {
-      const { data: membership } = await supabase
-        .from("class_members")
-        .select("user_id")
-        .eq("class_id", preview.id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (membership) {
-        redirect(`/class/${preview.id}`);
-      }
+    if (membership && preview) {
+      redirect(`/class/${preview.id}`);
     }
   }
 
