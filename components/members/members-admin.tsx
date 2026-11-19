@@ -130,7 +130,7 @@ export function MembersAdmin({
                 handleRoleChange(member, event.target.value as MemberRole)
               }
               disabled={isYou || busy}
-              className="h-8 rounded-lg border border-input bg-card px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-8 rounded-lg border border-input bg-card px-2 text-base font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 sm:text-xs"
             >
               <option value="member">Member</option>
               <option value="admin">Admin</option>

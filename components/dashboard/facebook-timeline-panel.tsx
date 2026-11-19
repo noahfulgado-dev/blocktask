@@ -1,5 +1,6 @@
 import { ExternalLink, Newspaper } from "lucide-react";
 
+import { DeferredIframe } from "@/components/dashboard/deferred-iframe";
 import {
   Card,
   CardContent,
@@ -51,16 +52,13 @@ export function FacebookTimelinePanel() {
 
       <CardContent className="pt-0">
         <div className="overflow-hidden rounded-lg border border-border bg-white">
-          <iframe
+          <DeferredIframe
             title={`${FACEBOOK_PAGE_NAME} Facebook timeline`}
             src={timelineSrc}
-            width="100%"
-            loading="eager"
             allow="encrypted-media"
             referrerPolicy="no-referrer-when-downgrade"
             scrolling="no"
-            style={{ border: "none", overflow: "hidden" }}
-            className="block h-[520px] w-full sm:h-[600px] lg:h-[700px]"
+            className="h-[520px] w-full sm:h-[600px] lg:h-[700px]"
           />
         </div>
 

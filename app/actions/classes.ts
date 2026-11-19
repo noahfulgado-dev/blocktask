@@ -22,11 +22,11 @@ export async function createClassAction(
   input: CreateClassInput,
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: auth } = await supabase.auth.getClaims();
 
-  if (!user) return { ok: false, error: "You need to be logged in." };
+  if (!auth?.claims) {
+    return { ok: false, error: "You need to be logged in." };
+  }
 
   const name = input.name?.trim() ?? "";
   if (!name) return { ok: false, error: "Class name is required." };
@@ -56,11 +56,11 @@ export async function createClassAction(
 
 export async function joinClassAction(code: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: auth } = await supabase.auth.getClaims();
 
-  if (!user) return { ok: false, error: "You need to be logged in." };
+  if (!auth?.claims) {
+    return { ok: false, error: "You need to be logged in." };
+  }
 
   const trimmed = code?.trim() ?? "";
   if (!trimmed) return { ok: false, error: "Enter an invite code." };
@@ -101,11 +101,11 @@ export async function updateClassAction(
   input: UpdateClassInput,
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: auth } = await supabase.auth.getClaims();
 
-  if (!user) return { ok: false, error: "You need to be logged in." };
+  if (!auth?.claims) {
+    return { ok: false, error: "You need to be logged in." };
+  }
 
   const name = input.name?.trim() ?? "";
   if (!name) return { ok: false, error: "Class name is required." };
@@ -140,11 +140,11 @@ export async function deleteClassAction(
   classId: string,
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: auth } = await supabase.auth.getClaims();
 
-  if (!user) return { ok: false, error: "You need to be logged in." };
+  if (!auth?.claims) {
+    return { ok: false, error: "You need to be logged in." };
+  }
 
   const { data, error } = await supabase
     .from("classes")
@@ -169,11 +169,11 @@ export async function regenerateInviteCodeAction(
   classId: string,
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: auth } = await supabase.auth.getClaims();
 
-  if (!user) return { ok: false, error: "You need to be logged in." };
+  if (!auth?.claims) {
+    return { ok: false, error: "You need to be logged in." };
+  }
 
   const { data, error } = await supabase.rpc("regenerate_invite_code", {
     p_class_id: classId,

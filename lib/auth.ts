@@ -1,29 +1,73 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 import type { MemberRole } from "@/lib/types";
 
-export async function getSessionUser() {
+export type SessionUser = {
+  id: string;
+  email: string | null;
+  user_metadata: Record<string, unknown>;
+};
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+type AuthContext = {
+  user: SessionUser | null;
+  supabase: SupabaseServerClient;
+};
+
+function toSessionUser(claims: {
+  sub?: string;
+  email?: unknown;
+  user_metadata?: unknown;
+}): SessionUser | null {
+  if (!claims.sub) return null;
+
+  return {
+    id: claims.sub,
+    email: typeof claims.email === "string" ? claims.email : null,
+    user_metadata:
+      claims.user_metadata && typeof claims.user_metadata === "object"
+        ? (claims.user_metadata as Record<string, unknown>)
+        : {},
+  };
+}
+
+/**
+ * Reads the session once per request. `getClaims()` verifies the JWT locally
+ * against the cached JWKS for asymmetric signing keys, which is much faster
+ * than `getUser()` (one Auth server roundtrip per call).
+ */
+export const getAuthContext = cache(async (): Promise<AuthContext> => {
+  // Reading the session verifies a JWT and compares its expiry against the
+  // current time, so it must run per request instead of during prerendering.
   await connection();
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ? toSessionUser(data.claims) : null;
 
-  return user;
+  return { user, supabase };
+});
+
+export async function getSessionUser() {
+  return (await getAuthContext()).user;
+}
+
+export async function requireAuthContext() {
+  const context = await getAuthContext();
+  if (!context.user) redirect("/login");
+  return context as AuthContext & { user: SessionUser };
 }
 
 export async function requireUser() {
-  const user = await getSessionUser();
-  if (!user) redirect("/login");
-  return user;
+  return (await requireAuthContext()).user;
 }
 
 export async function requireClassMember(classId: string) {
-  const user = await requireUser();
-  const supabase = await createClient();
+  const { user, supabase } = await requireAuthContext();
 
   const { data: membership } = await supabase
     .from("class_members")

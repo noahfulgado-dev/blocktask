@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ChevronRight, Settings } from "lucide-react";
 
 import { InviteCode } from "@/components/class/invite-code";
@@ -10,17 +10,16 @@ import { MembersPanel } from "@/components/members/members-panel";
 import { TaskBoard } from "@/components/tasks/task-board";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { requireClassMember } from "@/lib/auth";
+import { requireAuthContext } from "@/lib/auth";
 import { pageMetadata } from "@/lib/site";
 import type {
   ClassRow,
+  MemberRole,
   MemberWithProfile,
   Profile,
   Task,
   TaskCompletion,
 } from "@/lib/types";
-
-export const instant = false;
 
 export const metadata: Metadata = pageMetadata({
   title: "Task board",
@@ -35,14 +34,23 @@ export default async function ClassPage({
   params: Promise<{ classId: string }>;
 }) {
   const { classId } = await params;
-  const { user, supabase, role } = await requireClassMember(classId);
+  const { user, supabase } = await requireAuthContext();
 
+  // Kick off the membership check together with the page data instead of
+  // waiting for it first. RLS still guards every query.
   const [
-    { data: course },
-    { data: memberRows },
-    { data: taskRows },
-    { data: completionRows },
+    membershipResult,
+    courseResult,
+    memberRowsResult,
+    taskRowsResult,
+    completionRowsResult,
   ] = await Promise.all([
+    supabase
+      .from("class_members")
+      .select("role")
+      .eq("class_id", classId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
     supabase
       .from("classes")
       .select("*")
@@ -62,6 +70,14 @@ export default async function ClassPage({
       .select("*")
       .eq("class_id", classId),
   ]);
+
+  if (!membershipResult.data) redirect("/dashboard");
+
+  const role = membershipResult.data.role as MemberRole;
+  const course = courseResult.data;
+  const memberRows = memberRowsResult.data;
+  const taskRows = taskRowsResult.data;
+  const completionRows = completionRowsResult.data;
 
   if (!course) notFound();
 

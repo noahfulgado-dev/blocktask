@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { connection } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,6 +24,9 @@ export function normalizeInviteCode(raw: string | undefined) {
 
 export const lookupInvite = cache(async (code: string): Promise<InviteLookup> => {
   if (!code) return { preview: null, failed: false };
+
+  // The Supabase client reads the session, which is request-time data.
+  await connection();
 
   const supabase = await createClient();
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 
 import { InviteCode } from "@/components/class/invite-code";
@@ -18,15 +18,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { requireClassAdmin } from "@/lib/auth";
+import { requireAuthContext } from "@/lib/auth";
 import { pageMetadata } from "@/lib/site";
 import type {
   ClassRow,
   MemberWithProfile,
   Profile,
 } from "@/lib/types";
-
-export const instant = false;
 
 export const metadata: Metadata = pageMetadata({
   title: "Class settings",
@@ -41,20 +39,31 @@ export default async function ClassSettingsPage({
   params: Promise<{ classId: string }>;
 }) {
   const { classId } = await params;
-  const { user, supabase } = await requireClassAdmin(classId);
+  const { user, supabase } = await requireAuthContext();
 
-  const { data: course } = await supabase
-    .from("classes")
-    .select("*")
-    .eq("id", classId)
-    .maybeSingle<ClassRow>();
+  const [membershipResult, { data: course }, { data: memberRows }] =
+    await Promise.all([
+      supabase
+        .from("class_members")
+        .select("role")
+        .eq("class_id", classId)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("classes")
+        .select("*")
+        .eq("id", classId)
+        .maybeSingle<ClassRow>(),
+      supabase
+        .from("class_members")
+        .select("user_id, role, joined_at")
+        .eq("class_id", classId),
+    ]);
+
+  if (!membershipResult.data) redirect("/dashboard");
+  if (membershipResult.data.role !== "admin") redirect(`/class/${classId}`);
 
   if (!course) notFound();
-
-  const { data: memberRows } = await supabase
-    .from("class_members")
-    .select("user_id, role, joined_at")
-    .eq("class_id", classId);
 
   const userIds = (memberRows ?? []).map((row) => row.user_id as string);
 

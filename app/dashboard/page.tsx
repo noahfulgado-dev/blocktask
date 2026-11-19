@@ -10,13 +10,10 @@ import {
   type ReminderItem,
 } from "@/components/dashboard/reminders-panel";
 import { AppHeader } from "@/components/layout/app-header";
-import { requireUser } from "@/lib/auth";
+import { requireAuthContext } from "@/lib/auth";
 import { pageMetadata } from "@/lib/site";
-import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { ClassRow, MemberRole, TaskStatus } from "@/lib/types";
-
-export const instant = false;
 
 export const metadata: Metadata = pageMetadata({
   title: "Your classes",
@@ -27,10 +24,11 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default async function DashboardPage() {
-  const user = await requireUser();
-  const supabase = await createClient();
+  const { user, supabase } = await requireAuthContext();
 
-  const [{ data: profileRow }, { data: memberships }] = await Promise.all([
+  // Fetch the profile and the user's memberships + classes in one phase.
+  // Embedding `classes` here saves a separate roundtrip after memberships load.
+  const [{ data: profileRow }, { data: membershipRows }] = await Promise.all([
     supabase
       .from("profiles")
       .select("email, full_name")
@@ -38,7 +36,7 @@ export default async function DashboardPage() {
       .maybeSingle(),
     supabase
       .from("class_members")
-      .select("class_id, role")
+      .select("role, classes(*)")
       .eq("user_id", user.id),
   ]);
 
@@ -47,25 +45,28 @@ export default async function DashboardPage() {
     full_name: (user.user_metadata?.full_name as string | undefined) ?? null,
   };
 
-  const classIds = (memberships ?? []).map((row) => row.class_id as string);
+  const memberships = (membershipRows ?? []) as unknown as {
+    role: MemberRole;
+    classes: ClassRow | null;
+  }[];
+
+  const classes = memberships
+    .map((row) => row.classes)
+    .filter((row): row is ClassRow => Boolean(row))
+    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+
+  const classIds = classes.map((course) => course.id);
   const roleByClass = new Map<string, MemberRole>(
-    (memberships ?? []).map((row) => [
-      row.class_id as string,
-      row.role as MemberRole,
-    ]),
+    memberships
+      .filter((row) => row.classes)
+      .map((row) => [row.classes!.id, row.role]),
   );
 
-  let classes: ClassRow[] = [];
   const memberCounts = new Map<string, number>();
   const openTaskCounts = new Map<string, number>();
 
   if (classIds.length > 0) {
-    const [classesResult, membersResult, tasksResult] = await Promise.all([
-      supabase
-        .from("classes")
-        .select("*")
-        .in("id", classIds)
-        .order("created_at", { ascending: false }),
+    const [membersResult, tasksResult] = await Promise.all([
       supabase
         .from("class_members")
         .select("class_id")
@@ -75,8 +76,6 @@ export default async function DashboardPage() {
         .select("class_id, status")
         .in("class_id", classIds),
     ]);
-
-    classes = (classesResult.data ?? []) as ClassRow[];
 
     for (const row of membersResult.data ?? []) {
       const classId = row.class_id as string;

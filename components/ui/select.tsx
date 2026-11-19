@@ -11,7 +11,7 @@ function Select({
   return (
     <div className={cn("relative w-full", className)}>
       <select
-        className="flex h-10 w-full appearance-none rounded-lg border border-input bg-card px-3 pr-9 text-sm text-foreground shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-10 w-full appearance-none rounded-lg border border-input bg-card px-3 pr-9 text-base text-foreground shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
         {...props}
       >
         {children}

@@ -10,14 +10,19 @@ import {
 const PROTECTED_PREFIXES = ["/dashboard", "/class"];
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
-
   const { pathname } = request.nextUrl;
   const isAuthRoute = pathname === "/login" || pathname === "/signup";
   const isProtected = PROTECTED_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix),
   );
 
+  // Public routes don't need a session check. Skipping it here removes an
+  // Auth server roundtrip from every landing, legal, and invite page request.
+  if (!isProtected && !isAuthRoute) {
+    return NextResponse.next({ request });
+  }
+
+  let supabaseResponse = NextResponse.next({ request });
   let isAuthenticated = false;
 
   if (isSupabaseConfigured()) {
@@ -44,11 +49,11 @@ export async function updateSession(request: NextRequest) {
       },
     });
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // Verifies the JWT locally (cached JWKS) instead of hitting the Auth
+    // server on every request, and refreshes the session when needed.
+    const { data } = await supabase.auth.getClaims();
 
-    isAuthenticated = Boolean(user);
+    isAuthenticated = Boolean(data?.claims);
   }
 
   if (!isAuthenticated && isProtected) {
